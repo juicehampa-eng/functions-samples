@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>Hampa Juice - نظام تسجيل الدوام</title>
+
+  <!-- إعدادات PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2c7a7b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <!-- مكتبة Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(function(registration) {
+            console.log('ServiceWorker registered:', registration);
+          })
+          .catch(function(error) {
+            console.log('ServiceWorker registration failed:', error);
+          });
+      });
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(to bottom right, #f0f8ff, #e0ffe0);
+      text-align: center;
+      padding: 30px;
+      color: #333;
+    }
+    h1 {
+      font-size: 36px;
+      color: #2c7a7b;
+      margin-bottom: 5px;
+    }
+    h2 {
+      font-size: 24px;
+      color: #444;
+      margin-bottom: 30px;
+    }
+    .employee {
+      background: #ffffff;
+      border: 2px solid #2c7a7b;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px;
+      display: inline-block;
+      width: 320px;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+    }
+    button {
+      background-color: #2c7a7b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      margin: 5px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #226666;
+    }
+    #log {
+      margin-top: 30px;
+      white-space: pre-wrap;
+      text-align: right;
+      direction: rtl;
+      max-width: 600px;
+      margin-inline: auto;
+      border-top: 1px solid #aaa;
+      padding-top: 10px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <h1>Hampa Juice</h1>
+  <h2>نظام تسجيل الدوام</h2>
+
+  <div id="employees">
+    <div class="employee">
+      <strong>محمد شعبان<br>ويتر - مصري</strong><br>
+      <button onclick="logTime('محمد شعبان', 'دخول')">دخول</button>
+      <button onclick="logTime('محمد شعبان', 'خروج')">خروج</button>
+      <button onclick="downloadReport('محمد شعبان')">📄 تقرير</button>
+    </div>
+
+    <div class="employee">
+      <strong>معرووف خان<br>صانع عصير - كشميري</strong><br>
+      <button onclick="logTime('معرووف خان', 'دخول')">دخول</button>
+      <button onclick="logTime('معرووف خان', 'خروج')">خروج</button>
+      <button onclick="downloadReport('معرووف خان')">📄 تقرير</button>
+    </div>
+  </div>
+
+  <button onclick="downloadExcel()">📥 حفظ كل السجل كـ Excel</button>
+
+  <div id="log"></div>
+
+  <script>
+    let logData = [];
+
+    function logTime(name, action) {
+      const now = new Date();
+      const date = now.toLocaleDateString("ar-EG");
+      const time = now.toLocaleTimeString("ar-EG");
+      logData.push({ الموظف: name, تاريخ: date, دخول: action === "دخول" ? time : "", خروج: action === "خروج" ? time : "" });
+
+      document.getElementById("log").textContent += `${action} - ${name} - ${date} ${time}\n`;
+    }
+
+    function downloadReport(name) {
+      const entries = logData.filter(e => e.الموظف === name);
+      if (entries.length === 0) {
+        alert("لا توجد بيانات لهذا الموظف بعد.");
+        return;
+      }
+
+      let content = `📋 تقرير الموظف: ${name}\n\n`;
+      entries.forEach(e => {
+        content += `📅 ${e.تاريخ} | دخول: ${e.دخول || "-"} | خروج: ${e.خروج || "-"}\n`;
+      });
+
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `تقرير_${name.replace(/ /g, "_")}.txt`;
+      link.click();
+    }
+
+    function downloadExcel() {
+      const merged = {};
+      logData.forEach(row => {
+        const key = row.الموظف + "_" + row.تاريخ;
+        if (!merged[key]) merged[key] = { الموظف: row.الموظف, تاريخ: row.تاريخ, دخول: "", خروج: "" };
+        if (row.دخول) merged[key].دخول = row.دخول;
+        if (row.خروج) merged[key].خروج = row.خروج;
+      });
+
+      const finalData = Object.values(merged);
+      const worksheet = XLSX.utils.json_to_sheet(finalData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "سجل الدوام");
+      XLSX.writeFile(workbook, "سجل_الدوام_الكامل.xlsx");
+    }
+  </script>
+</body>
+</html>
